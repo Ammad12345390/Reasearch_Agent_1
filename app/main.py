@@ -5,7 +5,6 @@ from typing import TypedDict
 from fastapi import FastAPI, HTTPException
 from langgraph.graph import END, StateGraph
 
-from app.logger import save_log
 from app.schemas import TopicRequest, TopicResponse
 
 
@@ -16,7 +15,6 @@ class AgentState(TypedDict):
     topic: str
     facts: str
     summary: str
-
 
 async def researcher(state: AgentState):
     await asyncio.sleep(1)
@@ -80,18 +78,6 @@ async def generate_summary(request: TopicRequest):
         )
 
         execution_time = round(time.perf_counter() - start_time, 2)
-
-        try:
-            await save_log(
-                {
-                    "user_id": request.user_id,
-                    "topic": request.topic,
-                    "summary": result["summary"],
-                    "execution_time": execution_time,
-                }
-            )
-        except Exception as db_error:
-            print(f"MongoDB logging failed: {db_error}")
 
         return {
             "summary": result["summary"],
