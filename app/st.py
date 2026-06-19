@@ -202,7 +202,7 @@ if menu == "Sign Up":
                         "email": email.strip(),
                         "password": password
                     },
-                    timeout=30
+                    timeout=120
                 )
 
                 if response.status_code == 200:
@@ -244,7 +244,7 @@ elif menu == "Login":
                         "email": email.strip(),
                         "password": password
                     },
-                    timeout=30
+                    timeout=120
                 )
 
                 if response.status_code == 200:
@@ -315,7 +315,7 @@ elif menu == "Research":
                         headers={
                             "Authorization": f"Bearer {st.session_state.access_token}"
                         },
-                        timeout=90
+                        timeout=120
                     )
 
                     if response.status_code == 200:
