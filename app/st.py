@@ -2,7 +2,9 @@ import streamlit as st
 import requests
 from streamlit_cookies_manager import EncryptedCookieManager
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://reasearch-agent-1-2.onrender.com"
+#BASE_URL = "http://127.0.0.1:8000"
+
 
 st.set_page_config(
     page_title="Research Agent",
