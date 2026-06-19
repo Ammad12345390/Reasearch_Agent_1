@@ -15,4 +15,3 @@ motor
 pymongo
 argon2-cffi
 python-jose[cryptography]
-
