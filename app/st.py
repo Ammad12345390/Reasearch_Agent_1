@@ -10,6 +10,88 @@ st.set_page_config(
     layout="centered"
 )
 
+# ---------------- CUSTOM CSS ----------------
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(
+        135deg,
+        #0E1A35,
+        #1877F2,
+        #42A5F5
+    );
+}
+.main-card {
+    background: rgba(255,255,255,0.12);
+    padding: 30px;
+    border-radius: 22px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+    backdrop-filter: blur(12px);
+    margin-top: 20px;
+}
+
+.hero-title {
+    text-align: center;
+    font-size: 46px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.hero-subtitle {
+    text-align: center;
+    font-size: 18px;
+    color: #d7f9ff;
+    margin-bottom: 25px;
+}
+
+.stButton > button,
+.stFormSubmitButton > button {
+    background: linear-gradient(90deg, #0077ff, #00d4ff);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-weight: 700;
+    width: 100%;
+    transition: 0.3s;
+}
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 18px #00d4ff;
+    color: white;
+}
+
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #001f54, #003f88);
+}
+
+[data-testid="stSidebar"] * {
+    color: white;
+}
+
+input, textarea {
+    border-radius: 10px !important;
+}
+
+.success-box {
+    background: rgba(0, 255, 180, 0.15);
+    padding: 15px;
+    border-radius: 14px;
+    border-left: 5px solid #00ffc8;
+}
+
+.info-box {
+    background: rgba(255,255,255,0.15);
+    padding: 14px;
+    border-radius: 14px;
+    border-left: 5px solid #00d4ff;
+}
+</style>
+""", unsafe_allow_html=True)
+
 cookies = EncryptedCookieManager(
     prefix="research_agent_",
     password="your-very-secret-cookie-password"
@@ -18,63 +100,81 @@ cookies = EncryptedCookieManager(
 if not cookies.ready():
     st.stop()
 
-
 default_values = {
     "logged_in": False,
     "user_id": None,
     "username": None,
     "email": None,
-    "access_token": None
+    "access_token": None,
+    "page": "Login",
+    "logout_clicked": False
 }
 
 for key, value in default_values.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-
-# Restore login after refresh
-if cookies.get("access_token"):
+if cookies.get("access_token") and not st.session_state.logout_clicked:
     st.session_state.logged_in = True
     st.session_state.user_id = cookies.get("user_id")
     st.session_state.username = cookies.get("username")
     st.session_state.email = cookies.get("email")
     st.session_state.access_token = cookies.get("access_token")
-
+    st.session_state.page = "Research"
 
 def save_login_to_cookie(data):
+    st.session_state.logout_clicked = False
     cookies["access_token"] = data["access_token"]
     cookies["user_id"] = data["user_id"]
     cookies["username"] = data["username"]
     cookies["email"] = data["email"]
     cookies.save()
 
-
 def logout_user():
+    st.session_state.logout_clicked = True
     st.session_state.logged_in = False
     st.session_state.user_id = None
     st.session_state.username = None
     st.session_state.email = None
     st.session_state.access_token = None
+    st.session_state.page = "Login"
 
-    for key in ["access_token", "user_id", "username", "email"]:
-        if key in cookies:
-            del cookies[key]
-
+    cookies.pop("access_token", None)
+    cookies.pop("user_id", None)
+    cookies.pop("username", None)
+    cookies.pop("email", None)
     cookies.save()
 
+# ---------------- HEADER ----------------
+st.markdown("""
+<div class="hero-title">🤖 Research Agent</div>
+<div class="hero-subtitle">
+FastAPI + LangGraph + Tavily + Groq + MongoDB Atlas
+</div>
+""", unsafe_allow_html=True)
 
-st.title("🤖 Research Agent")
-st.write("FastAPI + LangGraph + Tavily + Groq + MongoDB Atlas")
-
-
+# ---------------- SIDEBAR ----------------
 if st.session_state.logged_in:
     st.sidebar.success(f"Logged in as {st.session_state.username}")
-    menu = st.sidebar.radio("Menu", ["Research", "Logout"])
+    menu = st.sidebar.radio(
+        "Menu",
+        ["Research", "Logout"],
+        index=["Research", "Logout"].index(st.session_state.page)
+        if st.session_state.page in ["Research", "Logout"] else 0
+    )
 else:
-    menu = st.sidebar.radio("Menu", ["Login", "Sign Up"])
+    menu = st.sidebar.radio(
+        "Menu",
+        ["Login", "Sign Up"],
+        index=["Login", "Sign Up"].index(st.session_state.page)
+        if st.session_state.page in ["Login", "Sign Up"] else 0
+    )
 
+st.session_state.page = menu
 
+# ---------------- SIGN UP ----------------
 if menu == "Sign Up":
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.subheader("Create Account")
 
     with st.form("signup_form"):
@@ -87,13 +187,10 @@ if menu == "Sign Up":
     if submit:
         if not username.strip() or not email.strip() or not password.strip():
             st.warning("Please fill all fields.")
-
         elif password != confirm_password:
             st.warning("Passwords do not match.")
-
         elif len(password) < 6:
             st.warning("Password must be at least 6 characters.")
-
         else:
             try:
                 response = requests.post(
@@ -110,7 +207,8 @@ if menu == "Sign Up":
                     data = response.json()
                     st.success("Account created successfully!")
                     st.info(f"Your MongoDB User ID is: {data['user_id']}")
-                    st.write("Now go to Login page.")
+                    st.session_state.page = "Login"
+                    st.rerun()
                 else:
                     st.error("Sign up failed.")
                     st.code(response.text)
@@ -118,12 +216,14 @@ if menu == "Sign Up":
             except requests.exceptions.ConnectionError:
                 st.error("FastAPI server is not running.")
                 st.code("uvicorn app.main:app --reload")
-
             except Exception as error:
                 st.error(f"Unexpected error: {error}")
 
+    st.markdown('</div>', unsafe_allow_html=True)
 
+# ---------------- LOGIN ----------------
 elif menu == "Login":
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.subheader("Login")
 
     with st.form("login_form"):
@@ -134,7 +234,6 @@ elif menu == "Login":
     if submit:
         if not email.strip() or not password.strip():
             st.warning("Please enter email and password.")
-
         else:
             try:
                 response = requests.post(
@@ -154,12 +253,12 @@ elif menu == "Login":
                     st.session_state.username = data["username"]
                     st.session_state.email = data["email"]
                     st.session_state.access_token = data["access_token"]
+                    st.session_state.page = "Research"
 
                     save_login_to_cookie(data)
 
                     st.success("Login successful!")
                     st.rerun()
-
                 else:
                     st.error("Login failed.")
                     st.code(response.text)
@@ -167,18 +266,27 @@ elif menu == "Login":
             except requests.exceptions.ConnectionError:
                 st.error("FastAPI server is not running.")
                 st.code("uvicorn app.main:app --reload")
-
             except Exception as error:
                 st.error(f"Unexpected error: {error}")
 
+    st.markdown('</div>', unsafe_allow_html=True)
 
+# ---------------- RESEARCH ----------------
 elif menu == "Research":
+    if not st.session_state.logged_in:
+        st.warning("Please login first.")
+        st.session_state.page = "Login"
+        st.rerun()
+
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.subheader("Generate Research Summary")
 
-    st.info(
-        f"Logged in as: {st.session_state.username} "
-        f"| MongoDB User ID: {st.session_state.user_id}"
-    )
+    st.markdown(f"""
+    <div class="info-box">
+        Logged in as: <b>{st.session_state.username}</b><br>
+        MongoDB User ID: <b>{st.session_state.user_id}</b>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.form("research_form"):
         topic = st.text_area(
@@ -191,10 +299,8 @@ elif menu == "Research":
     if submit:
         if not topic.strip():
             st.warning("Please enter a topic.")
-
         elif len(topic.strip()) < 3:
             st.warning("Topic must be at least 3 characters.")
-
         else:
             with st.spinner("Research Agent is searching and summarizing..."):
                 try:
@@ -230,7 +336,6 @@ elif menu == "Research":
                         st.error("Session expired. Please login again.")
                         logout_user()
                         st.rerun()
-
                     else:
                         st.error("API Error")
                         st.code(response.text)
@@ -238,15 +343,16 @@ elif menu == "Research":
                 except requests.exceptions.ConnectionError:
                     st.error("FastAPI server is not running.")
                     st.code("uvicorn app.main:app --reload")
-
                 except requests.exceptions.Timeout:
                     st.error("Request timed out. Try again.")
-
                 except Exception as error:
                     st.error(f"Unexpected error: {error}")
 
+    st.markdown('</div>', unsafe_allow_html=True)
 
+# ---------------- LOGOUT ----------------
 elif menu == "Logout":
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.subheader("Logout")
 
     st.write(f"You are logged in as **{st.session_state.username}**.")
@@ -255,3 +361,5 @@ elif menu == "Logout":
         logout_user()
         st.success("Logged out successfully.")
         st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
