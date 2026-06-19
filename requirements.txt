@@ -9,5 +9,9 @@ groq
 tavily-python
 psycopg[binary]
 streamlit
-motor 
+streamlit-cookies-manager
+requests
+motor
 pymongo
+argon2-cffi
+python-jose[cryptography]
