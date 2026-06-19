@@ -1,30 +1,42 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 
+
+# ---------------- AUTH ----------------
+
+class SignupRequest(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: str
+    username: str
+    email: EmailStr
+
+
+# ---------------- USER ----------------
+
+class UserResponse(BaseModel):
+    id: Optional[str] = None
+    username: str
+    email: EmailStr
+
+
+# ---------------- RESEARCH ----------------
 
 class TopicRequest(BaseModel):
-    topic: str = Field(
-        ...,
-        min_length=3,
-        max_length=200,
-        description="Topic to research and summarize"
-    )
-
-    user_id: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="Unique user identifier"
-    )
+    topic: str
 
 
 class TopicResponse(BaseModel):
-    summary: str = Field(
-        ...,
-        description="Generated summary from the agent workflow"
-    )
-
-    execution_time: float = Field(
-        ...,
-        gt=0,
-        description="Execution time in seconds"
-    )
+    summary: str
+    execution_time: float

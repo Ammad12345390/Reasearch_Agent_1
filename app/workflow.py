@@ -1,20 +1,27 @@
-import asyncio
+import os
 import time
+import asyncio
 from datetime import datetime, timezone
 from typing import TypedDict
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from langgraph.graph import END, StateGraph
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
+from langgraph.graph import END, StateGraph
+from tavily import TavilyClient
+from groq import Groq
+import psycopg
 
+load_dotenv()
 
 app = FastAPI(title="Research Summarizer Agent API")
 
+POSTGRESQL_URL = os.getenv("POSTGRESQL_URL")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-client = AsyncIOMotorClient("mongodb://localhost:27017")
-db = client["agent_db"]
-agent_logs = db["agent_logs"]
+tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 
 class TopicRequest(BaseModel):
@@ -34,19 +41,54 @@ class AgentState(TypedDict):
 
 
 async def researcher(state: AgentState):
-    await asyncio.sleep(1)
+    topic = state["topic"]
 
-    return {
-        "facts": f"Important facts about {state['topic']}"
-    }
+    search_response = await asyncio.to_thread(
+        tavily_client.search,
+        query=topic,
+        max_results=5,
+        search_depth="basic",
+    )
+
+    results = search_response.get("results", [])
+
+    facts = "\n\n".join(
+        [
+            f"Title: {item.get('title')}\nURL: {item.get('url')}\nContent: {item.get('content')}"
+            for item in results
+        ]
+    )
+
+    return {"facts": facts}
 
 
 async def summarizer(state: AgentState):
-    await asyncio.sleep(1)
+    prompt = f"""
+You are a research summarizer agent.
 
-    return {
-        "summary": f"Short summary of {state['facts']}"
-    }
+Topic:
+{state["topic"]}
+
+Research facts:
+{state["facts"]}
+
+Write a clear, short, useful summary.
+Also mention important points.
+"""
+
+    completion = await asyncio.to_thread(
+        groq_client.chat.completions.create,
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "You are a helpful research assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+    )
+
+    summary = completion.choices[0].message.content
+
+    return {"summary": summary}
 
 
 graph = StateGraph(AgentState)
@@ -61,10 +103,30 @@ graph.add_edge("summarizer", END)
 workflow = graph.compile()
 
 
+def save_log(user_id: str, topic: str, summary: str, execution_time: float):
+    with psycopg.connect(POSTGRESQL_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO agent_logs
+                (user_id, topic, summary, execution_time, timestamp)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    user_id,
+                    topic,
+                    summary,
+                    execution_time,
+                    datetime.now(timezone.utc),
+                ),
+            )
+        conn.commit()
+
+
 @app.get("/")
 async def root():
     return {
-        "message": "FastAPI LangGraph MongoDB Agent is running"
+        "message": "FastAPI LangGraph PostgreSQL Tavily Groq Agent is running"
     }
 
 
@@ -83,14 +145,12 @@ async def generate_summary(request: TopicRequest):
 
         execution_time = round(time.perf_counter() - start_time, 2)
 
-        await agent_logs.insert_one(
-            {
-                "user_id": request.user_id,
-                "topic": request.topic,
-                "summary": result["summary"],
-                "execution_time": execution_time,
-                "timestamp": datetime.now(timezone.utc),
-            }
+        await asyncio.to_thread(
+            save_log,
+            request.user_id,
+            request.topic,
+            result["summary"],
+            execution_time,
         )
 
         return {
