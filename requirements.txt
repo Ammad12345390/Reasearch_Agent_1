@@ -8,9 +8,6 @@ langchain-core==0.3.75
 groq
 tavily-python
 psycopg[binary]
-streamlit
-streamlit-cookies-manager
-requests
 motor
 pymongo
 argon2-cffi
