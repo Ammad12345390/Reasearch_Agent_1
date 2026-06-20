@@ -15,3 +15,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 email-validator
 certifi
+fastapi
+uvicorn
+motor
+-r streamlit_requirements.txt
