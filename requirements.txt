@@ -18,4 +18,4 @@ certifi
 fastapi
 uvicorn
 motor
--r streamlit_requirements.txt
+
