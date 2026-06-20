@@ -1,4 +1,5 @@
 import os
+import certifi
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -13,7 +14,12 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 if not MONGODB_URL:
     raise ValueError("MONGODB_URL is missing in .env file")
 
-client = AsyncIOMotorClient(MONGODB_URL)
+client = AsyncIOMotorClient(
+    MONGODB_URL,
+    tls=True,
+    tlsCAFile=certifi.where(),
+    serverSelectionTimeoutMS=30000
+)
 
 db = client[DATABASE_NAME]
 

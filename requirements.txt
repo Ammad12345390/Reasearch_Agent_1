@@ -17,3 +17,4 @@ argon2-cffi
 python-jose[cryptography]
 passlib[bcrypt]
 email-validator
+certifi
