@@ -6,18 +6,16 @@ from motor.motor_asyncio import AsyncIOMotorClient
 load_dotenv()
 
 MONGODB_URL = os.getenv("MONGODB_URL")
-DATABASE_NAME = os.getenv("DATABASE_NAME")
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "research_agent_db")
 
 if not MONGODB_URL:
-    raise ValueError("MONGODB_URL is missing in .env file")
+    raise ValueError("MONGODB_URL is missing")
 
 client = AsyncIOMotorClient(
     MONGODB_URL,
     tls=True,
     tlsCAFile=certifi.where(),
+    tlsAllowInvalidCertificates=True,
     serverSelectionTimeoutMS=30000
 )
 

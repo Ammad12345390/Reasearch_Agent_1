@@ -3,7 +3,7 @@ import time
 import asyncio
 from datetime import datetime, timezone
 from typing import TypedDict
-
+import certifi
 from bson import ObjectId
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends
@@ -32,7 +32,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not MONGODB_URL:
     raise ValueError("MONGODB_URL is missing in .env file")
 
-mongo_client = AsyncIOMotorClient(MONGODB_URL)
+mongo_client = AsyncIOMotorClient(
+    MONGODB_URL,
+    tls=True,
+    tlsCAFile=certifi.where(),
+    serverSelectionTimeoutMS=30000
+)
 db = mongo_client[DATABASE_NAME]
 
 users_collection = db["users"]
